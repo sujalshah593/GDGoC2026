@@ -46,8 +46,14 @@ A utility module that wraps AIF360 and pandas logic. Exposes these functions:
 ### 1. Clone the repository
 
 ```bash
+<<<<<<< HEAD
 git clone https://github.com/your-username/fairsight.git
 cd fairsight
+=======
+git clone https://github.com/Denish2410/GDGOC
+cd GDGOC
+cd GDGoC_2026
+>>>>>>> 85eba766afec004158e3b66480ec2941b9a6fb15
 ```
 
 ### 2. Install dependencies
