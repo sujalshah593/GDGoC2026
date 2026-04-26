@@ -5,45 +5,55 @@ from aif360.metrics import BinaryLabelDatasetMetric
 from aif360.algorithms.preprocessing import Reweighing
 
 def preprocess_data(df, target_col, protected_col):
+    df = df.copy()
 
     # Handle missing values
-    df = df.replace('?', pd.NA)
+    df = df.replace("?", pd.NA)
     df = df.dropna(subset=[target_col, protected_col])
 
-    # Strip spaces
-    for col in df.select_dtypes(include='object').columns:
-        df[col] = df[col].str.strip()
+    # Strip spaces from string columns
+    for col in df.columns:
+        if df[col].dtype == "object" or str(df[col].dtype).startswith("string"):
+            df[col] = df[col].astype(str).str.strip()
 
-    # Encode target
-    if df[target_col].dtype == 'object':
-        unique_vals = sorted(df[target_col].unique())
-        
-        #Force Binary Mapping
+    # Encode target column
+    if not pd.api.types.is_numeric_dtype(df[target_col]):
+        unique_vals = sorted(df[target_col].dropna().unique())
+
         if len(unique_vals) == 2:
-            #Assume higher value = favourable
             df[target_col] = df[target_col].map({
-                unique_vals[0]:0,
-                unique_vals[1]:1
+                unique_vals[0]: 0,
+                unique_vals[1]: 1
             })
         else:
-            raise ValueError("Target must be binary for fairness analysis") 
+            raise ValueError("Target must be binary for fairness analysis")
 
-    # Encode protected
-    if df[protected_col].dtype == 'object':
-        unique_vals = sorted(df[protected_col].unique())
+    # Encode protected column
+    if not pd.api.types.is_numeric_dtype(df[protected_col]):
         top = df[protected_col].value_counts().idxmax()
         df[protected_col] = (df[protected_col] == top).astype(int)
 
-    # Save protected column
+    # Save protected + target
     protected_data = df[protected_col]
+    target_data = df[target_col]
 
-    # One-hot encode everything else
-    df = pd.get_dummies(df, drop_first=True)
+    # Drop them before encoding
+    features = df.drop(columns=[target_col, protected_col])
 
-    # Restore protected column
-    df[protected_col] = protected_data
+    # One-hot encode features
+    features = pd.get_dummies(features, drop_first=True)
+
+    # Convert booleans to int
+    features = features.astype(int)
+
+    # Rebuild dataframe
+    df = pd.concat([features, target_data, protected_data], axis=1)
+
+    # Final hard numeric conversion
+    df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
 
     return df
+
 
 def prepare_dataset(df, label_col, protected_col):
 
