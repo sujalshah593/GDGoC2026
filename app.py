@@ -422,13 +422,37 @@ def validate_target(df, target_col):
     return df[target_col].nunique() == 2
 
 def ensure_binary(df, col):
-    if df[col].nunique() == 2:
+    series = df[col]
+
+    # Drop missing safely
+    series = series.dropna()
+
+    # If already binary
+    if series.nunique() == 2:
         return df, col
-    if df[col].dtype != 'object':
-        df[col] = (df[col] > df[col].median()).astype(int)
-    else:
-        top = df[col].value_counts().idxmax()
-        df[col] = (df[col] == top).astype(int)
+
+    # Try numeric ONLY if truly numeric
+    try:
+        numeric_series = pd.to_numeric(series, errors='raise')
+
+        median_val = numeric_series.median()
+        df[col] = (pd.to_numeric(df[col], errors='coerce') > median_val).astype(int)
+
+    except:
+        # Categorical handling (CORRECT WAY)
+        counts = df[col].value_counts()
+
+        if len(counts) < 2:
+            raise ValueError("Protected attribute must have at least 2 distinct groups")
+
+        # majority vs rest
+        majority = counts.idxmax()
+        df[col] = (df[col] == majority).astype(int)
+
+    # FINAL SAFETY CHECK
+    if df[col].nunique() < 2:
+        raise ValueError("Protected attribute must have at least 2 distinct groups")
+
     return df, col
 
 def di_bar_html(value, color):
