@@ -374,7 +374,10 @@ hr {
 # ─────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────
-client = genai.Client()
+if "GOOGLE_API_KEY" in st.secrets:
+    client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
+else:
+    client = None
 
 def dataset_to_xy(dataset):
     result = dataset.convert_to_dataframe()
